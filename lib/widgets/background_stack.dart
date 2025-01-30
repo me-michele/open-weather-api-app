@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
-
-import 'package:weather_app/widgets/circle_shaped_container.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:weather_app/bloc/weather_bloc_bloc.dart';
+import 'package:weather_app/widgets/helpers/weather_helpers.dart';
 
 class BackgroundStack extends StatelessWidget {
   const BackgroundStack({super.key});
@@ -12,46 +13,53 @@ class BackgroundStack extends StatelessWidget {
       height: MediaQuery.of(context).size.height,
       child: Stack(
         children: [
-          AlignedCircle(x: 3, y: -0.3),
-          AlignedCircle(x: -3, y: -0.3),
-          AlignedCircle(
-            x: 0,
-            y: -1.2,
-            height: 300,
-            width: 600,
-            color: Colors.orange,
-            isSquare: true,
+          buildBackgroundCircles(),
+          buildBlurEffect(),
+          BlocBuilder<WeatherBlocBloc, WeatherBlocState>(
+            builder: (context, state) {
+              if (state is WeatherBlocSuccess) {
+                final sunriseTime = formatTime(state.weather.sunrise);
+                final sunsetTime = formatTime(state.weather.sunset);
+                final tempMax = state.weather.tempMax?.toString() ?? 'N/A';
+                final tempMin = state.weather.tempMin?.toString() ?? 'N/A';
+
+                return SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      buildLocationAndGreeting(state.weather.areaName),
+                      buildMainWeatherInfo(
+                          state.weather.temperature!.celsius!.round(),
+                          state.weather.weatherMain!.toUpperCase(),
+                          DateFormat('EEEE dd -')
+                              .add_jm()
+                              .format(state.weather.date!),
+                          state.weather.weatherConditionCode!),
+                      const SizedBox(height: 30),
+                      buildWeatherInfoRow(
+                          'Sunrise', sunriseTime, 'Sunset', sunsetTime),
+                      const Padding(
+                        padding:
+                            EdgeInsets.symmetric(vertical: 5.0, horizontal: 8),
+                        child: Divider(color: Colors.grey),
+                      ),
+                      buildWeatherInfoRow(
+                          'Temp Max', tempMax, 'Temp Min', tempMin),
+                    ],
+                  ),
+                );
+              } else if (state is WeatherBlocLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              } else if (state is WeatherBlocFailure) {
+                return buildErrorMessage(state.message);
+              }
+              return const SizedBox.shrink(); // Default empty state
+            },
           ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-            child: Container(
-              decoration: BoxDecoration(color: Colors.transparent),
-            ),
-          ),
-          SizedBox(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height,
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '📍 Bangkok',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w300),
-                ),
-                SizedBox(
-                  height: 8,
-                ),
-                Text(
-                  'Good Morning',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          )
         ],
       ),
     );
